@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.2
+    container_name: spacenote-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./data/traefik/certs:/letsencrypt
+    networks:
+      - spacenote-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: spacenote-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: spacenote
+    volumes:
+      - ./data/mongodb:/data/db
+    networks:
+      - spacenote-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    image: ${BACKEND_IMAGE:-spacenote-backend:latest}
+    container_name: spacenote-backend
+    restart: unless-stopped
+    environment:
+      SPACENOTE_MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
+      SPACENOTE_CORS_ORIGINS: https://${DOMAIN}
+      SPACENOTE_SECRET_KEY: ${JWT_SECRET_KEY}
+      SPACENOTE_HOST: 0.0.0.0
+      SPACENOTE_PORT: 8000
+      SPACENOTE_DEBUG: ${DEBUG:-false}
+    depends_on:
+      - mongodb
+    networks:
+      - spacenote-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-spacenote-frontend:latest}
+    container_name: spacenote-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: https://api.${DOMAIN}/api/v1
+    depends_on:
+      - backend
+    networks:
+      - spacenote-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+networks:
+  spacenote-network:
+    driver: bridge
