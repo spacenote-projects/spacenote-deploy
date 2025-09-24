@@ -4,8 +4,8 @@ services:
     container_name: spacenote-mongodb-local
     restart: unless-stopped
     environment:
-      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-localroot}
-      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-localpassword}
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
       MONGODB_INITDB_DATABASE: spacenote
     volumes:
       - ./data/mongodb-local:/data/db

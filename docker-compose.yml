@@ -1,28 +1,42 @@
 version: '3.8'
 
 services:
-  traefik:
-    image: traefik:v3.2
-    container_name: spacenote-traefik
+  caddy:
+    image: caddy:2-alpine
+    container_name: spacenote-caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      EMAIL: ${EMAIL:-}  # Optional email for Let's Encrypt
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./data/traefik/certs:/letsencrypt
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    entrypoint: /bin/sh
+    command: >
+      -c "echo '
+      {
+        email ${EMAIL:-}
+      }
+
+      ${DOMAIN} {
+        reverse_proxy /api/* backend:8000
+        reverse_proxy frontend:80
+      }
+      ' | caddy run --config /dev/stdin --adapter caddyfile"
     networks:
       - spacenote-network
 
   mongodb:
-    image: mongo:7.0
+    image: mongodb/mongodb-community-server:8.2-ubi9
     container_name: spacenote-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: spacenote
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+      MONGODB_INITDB_DATABASE: spacenote
     volumes:
       - ./data/mongodb:/data/db
     networks:
@@ -38,7 +52,7 @@ services:
     container_name: spacenote-backend
     restart: unless-stopped
     environment:
-      SPACENOTE_DATABASE_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
+      SPACENOTE_DATABASE_URL: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
       SPACENOTE_SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
       SPACENOTE_CORS_ORIGINS: '["https://${DOMAIN}"]'
       SPACENOTE_HOST: 0.0.0.0
@@ -48,31 +62,17 @@ services:
       - mongodb
     networks:
       - spacenote-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.rule=Host(`api.${DOMAIN}`)"
-      - "traefik.http.routers.backend.tls=true"
-      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
 
   frontend:
     image: ${FRONTEND_IMAGE:-spacenote-frontend:latest}
     container_name: spacenote-frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: https://api.${DOMAIN}/api/v1
+      API_URL: https://${DOMAIN}
     depends_on:
       - backend
     networks:
       - spacenote-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
 
 networks:
   spacenote-network:
