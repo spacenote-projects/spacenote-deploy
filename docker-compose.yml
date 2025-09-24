@@ -38,9 +38,9 @@ services:
     container_name: spacenote-backend
     restart: unless-stopped
     environment:
-      SPACENOTE_MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
-      SPACENOTE_CORS_ORIGINS: https://${DOMAIN}
-      SPACENOTE_SECRET_KEY: ${JWT_SECRET_KEY}
+      SPACENOTE_DATABASE_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
+      SPACENOTE_SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
+      SPACENOTE_CORS_ORIGINS: '["https://${DOMAIN}"]'
       SPACENOTE_HOST: 0.0.0.0
       SPACENOTE_PORT: 8000
       SPACENOTE_DEBUG: ${DEBUG:-false}

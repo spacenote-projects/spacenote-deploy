@@ -2,6 +2,12 @@
 
 Production deployment configuration for SpaceNote application using Docker Compose.
 
+## Project Repositories
+
+- **Backend**: [spacenote-backend](https://github.com/spacenote-projects/spacenote-backend) - FastAPI backend service
+- **Frontend**: [spacenote-frontend](https://github.com/spacenote-projects/spacenote-frontend) - React web application
+- **Deploy**: [spacenote-deploy](https://github.com/spacenote-projects/spacenote-deploy) - Docker deployment configuration (this repository)
+
 ## Architecture
 
 - **Traefik** - Reverse proxy with automatic SSL/TLS via Let's Encrypt
@@ -19,7 +25,7 @@ Production deployment configuration for SpaceNote application using Docker Compo
 
 ### 1. Clone repository
 ```bash
-git clone <repository-url> spacenote-deploy
+git clone https://github.com/spacenote-projects/spacenote-deploy.git
 cd spacenote-deploy
 ```
 
@@ -34,7 +40,7 @@ Update these values in `.env`:
 - `LETSENCRYPT_EMAIL` - Email for SSL certificates
 - `MONGO_ROOT_PASSWORD` - Generate secure password
 - `MONGO_PASSWORD` - Generate secure password
-- `JWT_SECRET_KEY` - Generate secure key (min 32 chars)
+- `SESSION_SECRET_KEY` - Generate secure key (min 32 chars)
 
 Generate secure passwords:
 ```bash
@@ -131,7 +137,7 @@ docker-compose restart traefik
 ### Check service health
 ```bash
 docker-compose ps
-curl https://api.your-domain.com/api/v1/metadata/health
+curl https://api.your-domain.com/health
 ```
 
 ### Traefik dashboard
