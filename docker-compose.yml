@@ -10,8 +10,8 @@ services:
       DOMAIN: ${DOMAIN}
       EMAIL: ${EMAIL:-}  # Optional email for Let's Encrypt
     volumes:
-      - ./data/caddy/data:/data
-      - ./data/caddy/config:/config
+      - caddy_data:/data
+      - caddy_config:/config
     entrypoint: /bin/sh
     command: >
       -c "echo '
@@ -21,7 +21,7 @@ services:
 
       ${DOMAIN} {
         reverse_proxy /api/* backend:8000
-        reverse_proxy frontend:80
+        reverse_proxy frontend:4173
       }
       ' | caddy run --config /dev/stdin --adapter caddyfile"
     networks:
@@ -36,7 +36,7 @@ services:
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
       MONGODB_INITDB_DATABASE: spacenote
     volumes:
-      - ./data/mongodb:/data/db
+      - mongodb_data:/data/db
     networks:
       - spacenote-network
     healthcheck:
@@ -75,3 +75,8 @@ services:
 networks:
   spacenote-network:
     driver: bridge
+
+volumes:
+  mongodb_data:
+  caddy_data:
+  caddy_config:

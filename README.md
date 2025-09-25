@@ -12,10 +12,10 @@ Production deployment configuration for SpaceNote application using Docker Compo
 
 ## Architecture
 
-- **Caddy** - Reverse proxy with automatic SSL/TLS (simpler than Traefik!)
+- **Caddy** - Reverse proxy with automatic SSL/TLS
 - **MongoDB** - Database backend
 - **Backend** - Python FastAPI application
-- **Frontend** - React application served by Nginx
+- **Frontend** - React application served by serve package on port 4173
 
 ## Installation on Ubuntu 24.04
 
@@ -114,59 +114,7 @@ openssl rand -hex 32
 openssl rand -hex 32
 ```
 
-### 4. Create data directories
-
-```bash
-# Create directories for persistent data
-mkdir -p data/mongodb
-mkdir -p data/caddy/data
-mkdir -p data/caddy/config
-```
-
-### 5. Build Docker images locally
-
-**Important:** You must build images locally first, as pre-built images are not available yet.
-
-```bash
-# Clone and build backend
-git clone https://github.com/spacenote-projects/spacenote-backend.git
-cd spacenote-backend
-docker build -t spacenote-backend:latest .
-cd ..
-
-# Clone and build frontend
-git clone https://github.com/spacenote-projects/spacenote-frontend.git
-cd spacenote-frontend
-docker build -t spacenote-frontend:latest .
-cd ..
-```
-
-#### Optional: Using your own registry
-
-If you want to use a Docker registry:
-
-```bash
-# Build multi-platform images (for linux/amd64 and linux/arm64)
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t your-registry/spacenote-backend:latest \
-  --push ../spacenote-backend
-
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t your-registry/spacenote-frontend:latest \
-  --push ../spacenote-frontend
-
-# Update .env with your registry URLs
-nano .env
-
-# Uncomment and modify these lines:
-BACKEND_IMAGE=your-registry/spacenote-backend:latest
-FRONTEND_IMAGE=your-registry/spacenote-frontend:latest
-
-# Pull images
-docker compose pull
-```
-
-### 6. Deploy application
+### 4. Deploy application
 
 ```bash
 # Start all services
@@ -184,15 +132,6 @@ docker compose logs -f
 After deployment, services will be available at:
 - Frontend: `https://your-domain.com`
 - API: `https://your-domain.com/api`
-
-## Why Caddy?
-
-We use Caddy instead of Traefik because:
-- **Zero configuration for SSL** - Automatic HTTPS with no setup
-- **No separate config files** - Everything in docker-compose.yml
-- **Simpler syntax** - Minimal configuration needed
-- **Automatic certificate management** - Works with Let's Encrypt and ZeroSSL
-- **HTTP to HTTPS redirect** - Automatic, no configuration required
 
 ## Management Commands
 
@@ -242,23 +181,43 @@ docker exec spacenote-mongodb mongorestore /backup
 docker exec -it spacenote-mongodb mongosh -u root -p
 ```
 
+### Volume management
+```bash
+# List all volumes
+docker volume ls
+
+# Inspect a volume
+docker volume inspect spacenote-deploy_mongodb_data
+docker volume inspect spacenote-deploy_caddy_data
+docker volume inspect spacenote-deploy_caddy_config
+
+# Remove volumes (WARNING: This will delete all data!)
+docker compose down -v
+
+# Backup volumes directly
+docker run --rm -v spacenote-deploy_mongodb_data:/source -v $(pwd):/backup alpine tar czf /backup/mongodb-backup-$(date +%Y%m%d).tar.gz -C /source .
+
+# Restore volumes directly
+docker run --rm -v spacenote-deploy_mongodb_data:/target -v $(pwd):/backup alpine tar xzf /backup/mongodb-backup.tar.gz -C /target
+```
+
 ## SSL/TLS Certificates
 
 Caddy automatically manages certificates from Let's Encrypt or ZeroSSL.
 
 ### Certificate storage
-Certificates are stored in `./data/caddy/` and are automatically renewed.
+Certificates are stored in Docker volumes and are automatically renewed.
 
 ### Force certificate renewal
 ```bash
 # Stop Caddy
 docker compose stop caddy
 
-# Remove certificates
-rm -rf ./data/caddy/data/*
-rm -rf ./data/caddy/config/*
+# Remove certificate volumes
+docker volume rm spacenote-deploy_caddy_data
+docker volume rm spacenote-deploy_caddy_config
 
-# Restart Caddy
+# Restart Caddy (volumes will be recreated)
 docker compose up -d caddy
 ```
 
@@ -273,72 +232,6 @@ command: >
   }
   # ... rest of config
 ```
-
-## Troubleshooting
-
-### Check service health
-```bash
-# Service status
-docker compose ps
-
-# Test API endpoint
-curl https://your-domain.com/api/v1/health
-
-# Check container logs
-docker compose logs caddy
-docker compose logs backend
-docker compose logs mongodb
-```
-
-### Common issues
-
-#### Port conflicts
-```bash
-# Check what's using ports
-sudo lsof -i :80
-sudo lsof -i :443
-
-# Stop conflicting service
-sudo systemctl stop nginx  # Example
-```
-
-#### DNS issues
-```bash
-# Verify DNS resolution
-nslookup your-domain.com
-dig your-domain.com
-
-# Check DNS propagation
-curl https://dns.google/resolve?name=your-domain.com
-```
-
-#### Certificate problems
-1. Ensure DNS is properly configured
-2. Check Caddy logs: `docker compose logs caddy`
-3. Verify ports 80/443 are accessible
-4. Email is optional but recommended for renewal notifications
-
-#### MongoDB connection errors
-```bash
-# Test MongoDB connectivity
-docker exec -it spacenote-mongodb mongosh -u root -p
-
-# Check MongoDB logs
-docker compose logs mongodb
-```
-
-#### Container networking
-```bash
-# List networks
-docker network ls
-
-# Inspect network
-docker network inspect spacenote_spacenote-network
-
-# Test internal connectivity
-docker compose exec backend ping mongodb
-```
-
 ## Security Recommendations
 
 1. **Firewall configuration**
@@ -381,25 +274,14 @@ spacenote-deploy/
 ├── docker-compose.yml    # Service orchestration with Caddy config
 ├── .env                 # Environment variables (create from .env.example)
 ├── .env.example         # Example configuration
-├── data/                # Persistent data (created during setup)
-│   ├── mongodb/         # MongoDB data files
-│   └── caddy/          # SSL certificates and Caddy data
-│       ├── data/
-│       └── config/
 └── README.md            # This file
 ```
 
-## Configuration Simplicity
+## Data Storage
 
-This deployment uses Caddy's inline configuration directly in docker-compose.yml:
-- No separate web server configuration files
-- All settings in one place
-- Automatic SSL with minimal configuration
-- Easy to understand and modify
+All persistent data is stored in Docker named volumes:
+- `mongodb_data` - MongoDB database files
+- `caddy_data` - Caddy certificates and data
+- `caddy_config` - Caddy configuration
 
-## Support
-
-For issues and questions:
-- Backend: https://github.com/spacenote-projects/spacenote-backend/issues
-- Frontend: https://github.com/spacenote-projects/spacenote-frontend/issues
-- Deployment: https://github.com/spacenote-projects/spacenote-deploy/issues
+These volumes are managed by Docker and provide better permission handling than local directory mounts.
