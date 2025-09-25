@@ -123,42 +123,47 @@ mkdir -p data/caddy/data
 mkdir -p data/caddy/config
 ```
 
-### 5. Build or pull Docker images
+### 5. Build Docker images locally
 
-#### Option A: Using pre-built images
-
-If you have access to a Docker registry with pre-built images:
+**Important:** You must build images locally first, as pre-built images are not available yet.
 
 ```bash
-# Update .env with your registry URLs
-nano .env
-
-# Add/modify these lines:
-# BACKEND_IMAGE=your-registry/spacenote-backend:latest
-# FRONTEND_IMAGE=your-registry/spacenote-frontend:latest
-
-# Pull images
-docker compose pull
-```
-
-#### Option B: Build images locally
-
-If you have the source code:
-
-```bash
-# Clone backend repository
+# Clone and build backend
 git clone https://github.com/spacenote-projects/spacenote-backend.git
 cd spacenote-backend
 docker build -t spacenote-backend:latest .
 cd ..
 
-# Clone frontend repository
+# Clone and build frontend
 git clone https://github.com/spacenote-projects/spacenote-frontend.git
 cd spacenote-frontend
-
-# Build frontend (API_URL will be set at runtime)
 docker build -t spacenote-frontend:latest .
 cd ..
+```
+
+#### Optional: Using your own registry
+
+If you want to use a Docker registry:
+
+```bash
+# Build multi-platform images (for linux/amd64 and linux/arm64)
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t your-registry/spacenote-backend:latest \
+  --push ../spacenote-backend
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t your-registry/spacenote-frontend:latest \
+  --push ../spacenote-frontend
+
+# Update .env with your registry URLs
+nano .env
+
+# Uncomment and modify these lines:
+BACKEND_IMAGE=your-registry/spacenote-backend:latest
+FRONTEND_IMAGE=your-registry/spacenote-frontend:latest
+
+# Pull images
+docker compose pull
 ```
 
 ### 6. Deploy application
