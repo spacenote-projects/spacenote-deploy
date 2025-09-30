@@ -62,8 +62,8 @@ docker compose version
 
 ```bash
 # Create project directory
-mkdir -p ~/spacenote
-cd ~/spacenote
+mkdir -p /apps/spacenote
+cd /apps/spacenote
 
 # Download deployment files
 curl -O https://raw.githubusercontent.com/spacenote-projects/spacenote-deploy/main/docker-compose.yml
@@ -100,9 +100,6 @@ SESSION_SECRET_KEY=<secure_32_char_key>  # Minimum 32 characters
 # Docker images (optional, use defaults for local builds)
 BACKEND_IMAGE=spacenote-backend:latest
 FRONTEND_IMAGE=spacenote-frontend:latest
-
-# Debug mode
-DEBUG=false
 ```
 
 Generate secure passwords:
