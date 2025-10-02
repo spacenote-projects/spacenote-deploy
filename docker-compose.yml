@@ -28,7 +28,7 @@ services:
       - spacenote-network
 
   mongodb:
-    image: mongodb/mongodb-community-server:8.2-ubi9
+    image: mongodb/mongodb-community-server:8.2.0-ubi9
     container_name: spacenote-mongodb
     restart: unless-stopped
     environment:
