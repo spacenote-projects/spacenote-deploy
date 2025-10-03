@@ -57,6 +57,7 @@ services:
       SPACENOTE_HOST: 0.0.0.0
       SPACENOTE_PORT: 8000
       SPACENOTE_DEBUG: ${DEBUG:-false}
+      SPACENOTE_TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     depends_on:
       - mongodb
     networks:
