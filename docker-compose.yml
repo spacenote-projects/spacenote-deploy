@@ -10,8 +10,8 @@ services:
       DOMAIN: ${DOMAIN}
       EMAIL: ${EMAIL:-}  # Optional email for Let's Encrypt
     volumes:
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./data/caddy-data:/data
+      - ./data/caddy-config:/config
     entrypoint: /bin/sh
     command: >
       -c "echo '
@@ -36,7 +36,7 @@ services:
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
       MONGODB_INITDB_DATABASE: spacenote
     volumes:
-      - mongodb_data:/data/db
+      - ./data/mongodb:/data/db
     networks:
       - spacenote-network
     healthcheck:
@@ -58,6 +58,11 @@ services:
       SPACENOTE_PORT: 8000
       SPACENOTE_DEBUG: ${DEBUG:-false}
       SPACENOTE_TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      SPACENOTE_ATTACHMENTS_PATH: /data/attachments
+      SPACENOTE_IMAGES_PATH: /data/images
+    volumes:
+      - ./data/attachments:/data/attachments
+      - ./data/images:/data/images
     depends_on:
       - mongodb
     networks:
@@ -77,8 +82,3 @@ services:
 networks:
   spacenote-network:
     driver: bridge
-
-volumes:
-  mongodb_data:
-  caddy_data:
-  caddy_config:

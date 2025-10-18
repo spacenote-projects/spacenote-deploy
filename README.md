@@ -166,36 +166,32 @@ docker system prune -a
 
 ### Database operations
 ```bash
-# Backup database
-docker exec spacenote-mongodb mongodump --out /backup
-docker cp spacenote-mongodb:/backup ./backup-$(date +%Y%m%d)
-
-# Restore database
-docker cp ./backup spacenote-mongodb:/backup
-docker exec spacenote-mongodb mongorestore /backup
-
 # Access MongoDB shell
 docker exec -it spacenote-mongodb mongosh -u root -p
+
+# Database is stored in ./data/mongodb/
+# Backup: Just use the "Data backup and restore" section below
+# The filesystem backup is simpler and includes all data at once
 ```
 
-### Volume management
+### Data backup and restore
 ```bash
-# List all volumes
-docker volume ls
+# Full backup of all data
+tar -czf spacenote-backup-$(date +%Y%m%d).tar.gz ./data/
 
-# Inspect a volume
-docker volume inspect spacenote-deploy_mongodb_data
-docker volume inspect spacenote-deploy_caddy_data
-docker volume inspect spacenote-deploy_caddy_config
+# Backup specific components
+tar -czf mongodb-backup-$(date +%Y%m%d).tar.gz ./data/mongodb/
+tar -czf attachments-backup-$(date +%Y%m%d).tar.gz ./data/attachments/
 
-# Remove volumes (WARNING: This will delete all data!)
-docker compose down -v
+# Restore from backup
+tar -xzf spacenote-backup-20250101.tar.gz
 
-# Backup volumes directly
-docker run --rm -v spacenote-deploy_mongodb_data:/source -v $(pwd):/backup alpine tar czf /backup/mongodb-backup-$(date +%Y%m%d).tar.gz -C /source .
+# Check disk usage
+du -sh ./data/*
 
-# Restore volumes directly
-docker run --rm -v spacenote-deploy_mongodb_data:/target -v $(pwd):/backup alpine tar xzf /backup/mongodb-backup.tar.gz -C /target
+# Remove all data (WARNING: This will delete everything!)
+docker compose down
+rm -rf ./data/
 ```
 
 ## SSL/TLS Certificates
@@ -203,18 +199,18 @@ docker run --rm -v spacenote-deploy_mongodb_data:/target -v $(pwd):/backup alpin
 Caddy automatically manages certificates from Let's Encrypt or ZeroSSL.
 
 ### Certificate storage
-Certificates are stored in Docker volumes and are automatically renewed.
+Certificates are stored in `./data/caddy-data/` and are automatically renewed.
 
 ### Force certificate renewal
 ```bash
 # Stop Caddy
 docker compose stop caddy
 
-# Remove certificate volumes
-docker volume rm spacenote-deploy_caddy_data
-docker volume rm spacenote-deploy_caddy_config
+# Remove certificate data
+rm -rf ./data/caddy-data/
+rm -rf ./data/caddy-config/
 
-# Restart Caddy (volumes will be recreated)
+# Restart Caddy (directories will be recreated)
 docker compose up -d caddy
 ```
 
@@ -268,17 +264,30 @@ command: >
 ## Directory Structure
 ```
 spacenote-deploy/
-├── docker-compose.yml    # Service orchestration with Caddy config
-├── .env                 # Environment variables (create from .env.example)
-├── .env.example         # Example configuration
-└── README.md            # This file
+├── docker-compose.yml       # Production deployment config
+├── docker-compose.local.yml # Local development config
+├── .env                    # Environment variables (create from .env.example)
+├── .env.example            # Example configuration
+├── README.md               # This file
+└── data/                   # Persistent data (created automatically)
+    ├── mongodb/           # Database files
+    ├── caddy-data/        # SSL certificates and Caddy data
+    ├── caddy-config/      # Caddy configuration
+    ├── attachments/       # User-uploaded files
+    └── images/            # Processed images (WebP)
 ```
 
 ## Data Storage
 
-All persistent data is stored in Docker named volumes:
-- `mongodb_data` - MongoDB database files
-- `caddy_data` - Caddy certificates and data
-- `caddy_config` - Caddy configuration
+All persistent data is stored in the `./data/` directory using bind mounts:
+- `./data/mongodb` - MongoDB database files
+- `./data/caddy-data` - Caddy certificates and data
+- `./data/caddy-config` - Caddy configuration
+- `./data/attachments` - User-uploaded file attachments
+- `./data/images` - Processed images (WebP format)
 
-These volumes are managed by Docker and provide better permission handling than local directory mounts.
+These directories are automatically created when you start the application. Using bind mounts provides:
+- Easy backup with standard filesystem tools (tar, rsync, cp)
+- Direct file access for inspection and debugging
+- Simple migration to new servers (just copy the data folder)
+- Clear visibility of disk usage
