@@ -111,9 +111,12 @@ openssl rand -hex 32
 openssl rand -hex 32
 ```
 
-### 4. Deploy application
+### 4. Prepare data directories and deploy
 
 ```bash
+# Create data directories
+mkdir -p data/mongodb data/attachments data/images
+
 # Start all services
 docker compose up -d
 
@@ -123,6 +126,8 @@ docker compose ps
 # View logs
 docker compose logs -f
 ```
+
+**Note:** The MongoDB volume is mounted to `/data` (not `/data/db`) with the `:z` flag to allow MongoDB's entrypoint to properly initialize the database directory with correct permissions. The `:z` flag is required on SELinux-enabled systems (RHEL, CentOS, Fedora).
 
 ## Service URLs
 
@@ -280,7 +285,7 @@ spacenote-deploy/
 ## Data Storage
 
 All persistent data is stored in the `./data/` directory using bind mounts:
-- `./data/mongodb` - MongoDB database files
+- `./data/mongodb` - MongoDB data directory (contains db/, configdb/, etc.)
 - `./data/caddy-data` - Caddy certificates and data
 - `./data/caddy-config` - Caddy configuration
 - `./data/attachments` - User-uploaded file attachments
@@ -291,3 +296,4 @@ These directories are automatically created when you start the application. Usin
 - Direct file access for inspection and debugging
 - Simple migration to new servers (just copy the data folder)
 - Clear visibility of disk usage
+

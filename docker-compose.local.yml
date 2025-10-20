@@ -8,7 +8,7 @@ services:
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
       MONGODB_INITDB_DATABASE: spacenote
     volumes:
-      - ./data/mongodb:/data/db
+      - ./data/mongodb:/data:z
     networks:
       - spacenote-local
     healthcheck:
