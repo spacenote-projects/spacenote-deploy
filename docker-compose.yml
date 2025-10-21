@@ -31,6 +31,8 @@ services:
     image: mongodb/mongodb-community-server:8.2.0-ubi9
     container_name: spacenote-mongodb
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
@@ -49,6 +51,7 @@ services:
     image: ${BACKEND_IMAGE:-spacenote-backend:latest}
     container_name: spacenote-backend
     restart: unless-stopped
+    user: "1000:1000"
     environment:
       SPACENOTE_DATABASE_URL: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongodb:27017/spacenote?authSource=admin
       SPACENOTE_SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
