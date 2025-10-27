@@ -20,8 +20,18 @@ services:
       }
 
       ${DOMAIN} {
-        reverse_proxy /api/* backend:8000
-        reverse_proxy frontend:4173
+        reverse_proxy /api/* backend:8000 {
+          transport http {
+            read_timeout 10m
+            write_timeout 10m
+          }
+        }
+        reverse_proxy frontend:4173 {
+          transport http {
+            read_timeout 10m
+            write_timeout 10m
+          }
+        }
       }
       ' | caddy run --config /dev/stdin --adapter caddyfile"
     networks:
